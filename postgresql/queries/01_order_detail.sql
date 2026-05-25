@@ -13,7 +13,7 @@ SELECT
     pay.payment_installments,
     pay.payment_value
 FROM "order" o
-JOIN customer c ON o.customer_id = c.customer_id
+JOIN customer c ON o.customer_id = c.customer_unique_id
 JOIN order_item oi ON o.order_id = oi.order_id
 JOIN product p ON oi.product_id = p.product_id
 JOIN product_category pc ON p.category_name = pc.category_name

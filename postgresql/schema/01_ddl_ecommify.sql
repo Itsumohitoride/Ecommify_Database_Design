@@ -37,8 +37,7 @@ CREATE TABLE IF NOT EXISTS customer (
     zip_code_prefix     CHAR(5),
     customer_city       VARCHAR(60),
     customer_state      CHAR(2),
-    CONSTRAINT pk_customer          PRIMARY KEY (customer_id),
-    CONSTRAINT uq_customer_unique   UNIQUE (customer_unique_id),
+    CONSTRAINT pk_customer          PRIMARY KEY (customer_unique_id),
     CONSTRAINT fk_customer_geo      FOREIGN KEY (zip_code_prefix)
         REFERENCES geolocation (zip_code_prefix)
         ON UPDATE CASCADE ON DELETE SET NULL
@@ -85,7 +84,7 @@ CREATE TABLE IF NOT EXISTS "order" (
     order_estimated_delivery_date   TIMESTAMPTZ        NOT NULL,
     CONSTRAINT pk_order              PRIMARY KEY (order_id),
     CONSTRAINT fk_order_customer     FOREIGN KEY (customer_id)
-        REFERENCES customer (customer_id)
+        REFERENCES customer (customer_unique_id)
         ON UPDATE CASCADE ON DELETE RESTRICT
 ) PARTITION BY RANGE (order_purchase_timestamp);
 

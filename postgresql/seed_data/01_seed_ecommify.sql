@@ -27,7 +27,7 @@ VALUES ('p1q2r3s4t5u6v7w8x9y0z1a2b3c4d5e6', 'eletronicos', 15, 350.00, 30.0, 10.
 
 -- ORDER
 INSERT INTO "order" (order_id, customer_id, order_status, order_purchase_timestamp, order_estimated_delivery_date)
-VALUES ('o1p2q3r4s5t6u7v8w9x0y1z2a3b4c5d6', 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6', 'created',
+VALUES ('o1p2q3r4s5t6u7v8w9x0y1z2a3b4c5d6', 'uniq_001', 'created',
         '2017-05-15 10:30:00-03', '2017-05-25 23:59:59-03');
 
 -- ORDER_ITEM
