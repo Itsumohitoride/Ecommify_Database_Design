@@ -1,0 +1,56 @@
+{
+  "type": "aggregate",
+  "description": "Pipelines de agregación para análisis y cómputos multi-etapa.",
+  "files": {
+    "products": {
+      "collection": "products",
+      "queries": [
+        {
+          "id": 6,
+          "name": "Promedio de review score por categoría",
+          "pipeline": [
+            { "$group": { "_id": "$category_name_english", "avgScore": { "$avg": "$avg_review_score" }, "totalProducts": { "$sum": 1 } } },
+            { "$sort": { "avgScore": -1 } }
+          ]
+        }
+      ]
+    },
+    "event_logs": {
+      "collection": "event_logs",
+      "queries": [
+        {
+          "id": 9,
+          "name": "Conteo de eventos por tipo",
+          "pipeline": [
+            { "$group": { "_id": "$event_type", "count": { "$sum": 1 } } },
+            { "$sort": { "count": -1 } }
+          ]
+        },
+        {
+          "id": 10,
+          "name": "Top productos más vistos",
+          "pipeline": [
+            { "$match": { "event_type": "product_view" } },
+            { "$group": { "_id": "$product_id", "views": { "$sum": 1 } } },
+            { "$sort": { "views": -1 } },
+            { "$limit": 5 }
+          ]
+        }
+      ]
+    },
+    "user_sessions": {
+      "collection": "user_sessions",
+      "queries": [
+        {
+          "id": 13,
+          "name": "Valor total de un carrito",
+          "pipeline": [
+            { "$match": { "_id": "<session_id>" } },
+            { "$unwind": "$cart" },
+            { "$group": { "_id": "$_id", "total": { "$sum": { "$multiply": ["$cart.quantity", "$cart.unit_price"] } } } }
+          ]
+        }
+      ]
+    }
+  }
+}

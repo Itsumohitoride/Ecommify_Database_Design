@@ -1,0 +1,34 @@
+{
+  "collection": "event_logs",
+  "engine": "MongoDB",
+  "description": "Logs de eventos operacionales (vistas, clics, búsquedas, carritos abandonados). TTL 90 días.",
+  "schema_validation": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": ["event_type", "session_id", "timestamp", "ttl_expire"],
+      "properties": {
+        "event_type": {
+          "enum": ["product_view", "product_click", "search", "cart_add", "cart_remove", "cart_abandon", "checkout_start", "category_view", "seller_view"],
+          "description": "Tipo de evento. Dominio cerrado de 9 valores."
+        },
+        "customer_unique_id": { "bsonType": "string", "description": "Identidad real del comprador" },
+        "session_id": { "bsonType": "string", "description": "ID de sesión activa" },
+        "product_id": { "bsonType": "string" },
+        "seller_id": { "bsonType": "string" },
+        "category": { "bsonType": "string" },
+        "metadata": { "bsonType": "object", "description": "Metadatos variables según event_type (source, position, search_query, quantity, etc.)" },
+        "page_url": { "bsonType": "string" },
+        "timestamp": { "bsonType": "date" },
+        "ttl_expire": { "bsonType": "date", "description": "Fecha de expiración para TTL index (90 días tras timestamp)" }
+      }
+    }
+  },
+  "indexes": [
+    { "key": { "event_type": 1, "timestamp": -1 }, "description": "Filtro por tipo de evento + rango temporal" },
+    { "key": { "customer_unique_id": 1, "timestamp": -1 }, "description": "Historial de eventos por usuario" },
+    { "key": { "product_id": 1, "timestamp": -1 }, "description": "Eventos por producto" },
+    { "key": { "session_id": 1 }, "description": "Reconstruir sesión completa" },
+    { "key": { "category": 1, "timestamp": -1 } },
+    { "key": { "ttl_expire": 1 }, "options": { "expireAfterSeconds": 0 }, "description": "TTL: borrado automático a los 90 días" }
+  ]
+}

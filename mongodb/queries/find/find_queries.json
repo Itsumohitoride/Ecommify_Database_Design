@@ -1,0 +1,85 @@
+{
+  "type": "find",
+  "description": "Consultas con filter + proyección. 1 collection = 1 archivo para claridad.",
+  "files": {
+    "products": {
+      "collection": "products",
+      "queries": [
+        {
+          "id": 1,
+          "name": "Productos por categoría",
+          "filter": { "category_name": "eletronicos" },
+          "projection": { "product_id": 1, "name": 1, "category_name_english": 1, "avg_review_score": 1, "total_reviews": 1 }
+        },
+        {
+          "id": 2,
+          "name": "Búsqueda full-text",
+          "filter": { "$text": { "$search": "mouse" } },
+          "projection": { "product_id": 1, "name": 1, "score": { "$meta": "textScore" } },
+          "sort": { "score": { "$meta": "textScore" } }
+        },
+        {
+          "id": 3,
+          "name": "Filtro por especificaciones anidadas",
+          "filter": { "specifications.connectivity": { "$regex": "Bluetooth" } },
+          "projection": { "product_id": 1, "name": 1, "specifications.connectivity": 1 }
+        },
+        {
+          "id": 4,
+          "name": "Productos por tag",
+          "filter": { "tags": "inalambrico" },
+          "projection": { "product_id": 1, "name": 1, "tags": 1 }
+        },
+        {
+          "id": 5,
+          "name": "Top productos mejor calificados",
+          "filter": {},
+          "projection": { "product_id": 1, "name": 1, "category_name": 1, "avg_review_score": 1, "total_reviews": 1 },
+          "sort": { "avg_review_score": -1, "total_reviews": -1 },
+          "limit": 3
+        },
+        {
+          "id": 14,
+          "name": "Enriquecer carrito con datos de producto (tras obtener product_ids de user_sessions)",
+          "filter": { "product_id": { "$in": ["<product_id_1>", "<product_id_2>"] } },
+          "projection": { "product_id": 1, "name": 1, "category_name_english": 1, "avg_review_score": 1 }
+        }
+      ]
+    },
+    "event_logs": {
+      "collection": "event_logs",
+      "queries": [
+        {
+          "id": 7,
+          "name": "Eventos de un usuario en las últimas 24h",
+          "filter": {
+            "customer_unique_id": "<customer_unique_id>",
+            "timestamp": { "$gte": "{new Date(Date.now() - 24*60*60*1000)}" }
+          },
+          "sort": { "timestamp": -1 }
+        },
+        {
+          "id": 8,
+          "name": "Eventos de una sesión específica (orden cronológico)",
+          "filter": { "session_id": "<session_id>" },
+          "projection": { "event_type": 1, "product_id": 1, "timestamp": 1, "metadata.search_query": 1 },
+          "sort": { "timestamp": 1 }
+        }
+      ]
+    },
+    "user_sessions": {
+      "collection": "user_sessions",
+      "queries": [
+        {
+          "id": 11,
+          "name": "Carritos activos no expirados",
+          "filter": {
+            "expires_at": { "$gt": "{new Date()}" },
+            "cart.0": { "$exists": true }
+          },
+          "projection": { "_id": 1, "customer_unique_id": 1, "cart": 1, "expires_at": 1 }
+        }
+      ]
+    }
+  }
+}

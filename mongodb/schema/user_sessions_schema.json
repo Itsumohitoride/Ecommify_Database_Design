@@ -1,0 +1,34 @@
+{
+  "collection": "user_sessions",
+  "engine": "MongoDB",
+  "description": "Sesiones activas y carritos de compra temporales. TTL 24h. _id = session_id como clave natural.",
+  "schema_validation": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": ["_id", "created_at", "expires_at"],
+      "properties": {
+        "_id": { "bsonType": "string", "description": "session_id como PK natural. Ej: sess_abc123" },
+        "customer_unique_id": { "bsonType": "string" },
+        "cart": {
+          "bsonType": "array",
+          "items": {
+            "bsonType": "object",
+            "required": ["product_id", "quantity", "unit_price"],
+            "properties": {
+              "product_id": { "bsonType": "string" },
+              "quantity": { "bsonType": "int", "minimum": 1 },
+              "unit_price": { "bsonType": "double", "minimum": 0 },
+              "seller_id": { "bsonType": "string" }
+            }
+          }
+        },
+        "created_at": { "bsonType": "date" },
+        "expires_at": { "bsonType": "date", "description": "TTL: 24h tras creación" }
+      }
+    }
+  },
+  "indexes": [
+    { "key": { "customer_unique_id": 1 }, "description": "Buscar sesión activa por usuario" },
+    { "key": { "expires_at": 1 }, "options": { "expireAfterSeconds": 0 }, "description": "TTL: expiración automática a las 24h" }
+  ]
+}

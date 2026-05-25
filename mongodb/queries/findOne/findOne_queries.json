@@ -1,0 +1,16 @@
+{
+  "type": "findOne",
+  "description": "Retorna un solo documento. Útil para buscar sesión activa o detalle de un elemento.",
+  "collection": "user_sessions",
+  "queries": [
+    {
+      "id": 12,
+      "name": "Carrito activo de un usuario específico",
+      "filter": {
+        "customer_unique_id": "<customer_unique_id>",
+        "expires_at": { "$gt": "{new Date()}" }
+      },
+      "projection": { "cart": 1 }
+    }
+  ]
+}
