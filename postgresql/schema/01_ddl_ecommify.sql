@@ -1,6 +1,6 @@
 -- =============================================
--- DDL Completo — Módulo Transaccional Ecommify
--- PostgreSQL 15+ · Esquema 3FN
+-- DDL Completo ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â MÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³dulo Transaccional Ecommify
+-- PostgreSQL 15+ ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· Esquema 3FN
 -- =============================================
 
 -- ENUM personalizados
@@ -13,7 +13,7 @@ CREATE TYPE payment_type_enum AS ENUM (
     'credit_card', 'debit_card', 'boleto', 'voucher', 'not_defined'
 );
 
--- 1. GEOLOCATION (resuelve violación 1FN)
+-- 1. GEOLOCATION (resuelve violaciÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n 1FN)
 CREATE TABLE IF NOT EXISTS geolocation (
     zip_code_prefix  CHAR(5)       NOT NULL,
     latitude         NUMERIC(9,6)  NOT NULL,
@@ -66,11 +66,17 @@ CREATE TABLE IF NOT EXISTS product (
     product_length_cm           NUMERIC(6,2)    CHECK (product_length_cm > 0),
     product_height_cm           NUMERIC(6,2)    CHECK (product_height_cm > 0),
     product_width_cm            NUMERIC(6,2)    CHECK (product_width_cm > 0),
+    specifications               JSONB,
+    photo_urls                   TEXT[],
     CONSTRAINT pk_product           PRIMARY KEY (product_id),
     CONSTRAINT fk_product_cat       FOREIGN KEY (category_name)
         REFERENCES product_category (category_name)
         ON UPDATE CASCADE ON DELETE SET NULL
 );
+
+-- Migracion para DB existentes: columnas avanzadas en product
+ALTER TABLE product ADD COLUMN IF NOT EXISTS specifications JSONB;
+ALTER TABLE product ADD COLUMN IF NOT EXISTS photo_urls TEXT[];
 
 -- 6. ORDER (particionada por fecha)
 CREATE TABLE IF NOT EXISTS "order" (
@@ -82,7 +88,8 @@ CREATE TABLE IF NOT EXISTS "order" (
     order_delivered_carrier_date    TIMESTAMPTZ,
     order_delivered_customer_date   TIMESTAMPTZ,
     order_estimated_delivery_date   TIMESTAMPTZ        NOT NULL,
-    CONSTRAINT pk_order              PRIMARY KEY (order_id),
+    promotion_period                TSTZRANGE,
+    CONSTRAINT pk_order              PRIMARY KEY (order_id, order_purchase_timestamp),
     CONSTRAINT fk_order_customer     FOREIGN KEY (customer_id)
         REFERENCES customer (customer_unique_id)
         ON UPDATE CASCADE ON DELETE RESTRICT
@@ -97,18 +104,21 @@ CREATE TABLE order_2018 PARTITION OF "order"
 CREATE TABLE order_future PARTITION OF "order"
     FOR VALUES FROM ('2019-01-01') TO (MAXVALUE);
 
--- 7. ORDER_ITEM (entidad débil, resuelve 2FN)
+-- Migracion para DB existentes: columna promotion_period en order
+ALTER TABLE "order" ADD COLUMN IF NOT EXISTS promotion_period TSTZRANGE;
+
+-- 7. ORDER_ITEM (entidad dÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©bil, resuelve 2FN)
 CREATE TABLE IF NOT EXISTS order_item (
     order_id            CHAR(32)        NOT NULL,
     order_item_id       SMALLINT        NOT NULL,
+    order_purchase_timestamp TIMESTAMPTZ     NOT NULL,
     product_id          CHAR(32)        NOT NULL,
     seller_id           CHAR(32)        NOT NULL,
     shipping_limit_date TIMESTAMPTZ     NOT NULL,
     price               NUMERIC(10,2)   NOT NULL,
     freight_value       NUMERIC(10,2)   NOT NULL,
     CONSTRAINT pk_order_item   PRIMARY KEY (order_id, order_item_id),
-    CONSTRAINT fk_oi_order     FOREIGN KEY (order_id)
-        REFERENCES "order" (order_id)
+    CONSTRAINT fk_oi_order     FOREIGN KEY (order_id, order_purchase_timestamp) REFERENCES "order" (order_id, order_purchase_timestamp)
         ON UPDATE CASCADE ON DELETE RESTRICT,
     CONSTRAINT fk_oi_product   FOREIGN KEY (product_id)
         REFERENCES product (product_id)
@@ -124,35 +134,35 @@ CREATE TABLE IF NOT EXISTS order_item (
 CREATE TABLE IF NOT EXISTS payment (
     order_id              CHAR(32)          NOT NULL,
     payment_sequential    SMALLINT          NOT NULL,
+    order_purchase_timestamp TIMESTAMPTZ     NOT NULL,
     payment_type          payment_type_enum NOT NULL,
     payment_installments  SMALLINT          NOT NULL,
     payment_value         NUMERIC(10,2)     NOT NULL,
     CONSTRAINT pk_payment           PRIMARY KEY (order_id, payment_sequential),
-    CONSTRAINT fk_payment_order     FOREIGN KEY (order_id)
-        REFERENCES "order" (order_id)
+    CONSTRAINT fk_payment_order     FOREIGN KEY (order_id, order_purchase_timestamp) REFERENCES "order" (order_id, order_purchase_timestamp)
         ON UPDATE CASCADE ON DELETE RESTRICT,
-    CONSTRAINT ck_pay_install       CHECK (payment_installments >= 1),
-    CONSTRAINT ck_pay_value         CHECK (payment_value > 0)
+    CONSTRAINT ck_pay_install CHECK (payment_installments >= 0),
+    CONSTRAINT ck_pay_value CHECK (payment_value >= 0)
 );
 
 -- 9. REVIEW
 CREATE TABLE IF NOT EXISTS review (
     review_id               CHAR(32)       NOT NULL,
     order_id                CHAR(32)       NOT NULL,
+    order_purchase_timestamp TIMESTAMPTZ     NOT NULL,
     review_score            SMALLINT       NOT NULL,
     review_comment_title    VARCHAR(50),
     review_comment_message  VARCHAR(300),
     review_creation_date    TIMESTAMPTZ    NOT NULL,
     review_answer_timestamp TIMESTAMPTZ,
     CONSTRAINT pk_review           PRIMARY KEY (review_id),
-    CONSTRAINT fk_review_order     FOREIGN KEY (order_id)
-        REFERENCES "order" (order_id)
+    CONSTRAINT fk_review_order     FOREIGN KEY (order_id, order_purchase_timestamp) REFERENCES "order" (order_id, order_purchase_timestamp)
         ON UPDATE CASCADE ON DELETE CASCADE,
     CONSTRAINT ck_review_score     CHECK (review_score BETWEEN 1 AND 5)
 );
 
 -- =============================================
--- ÍNDICES EXPLÍCITOS
+-- ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂNDICES EXPLÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂCITOS
 -- =============================================
 CREATE UNIQUE INDEX idx_customer_unique_id ON customer (customer_unique_id);
 CREATE INDEX idx_customer_zip              ON customer (zip_code_prefix);
@@ -166,3 +176,33 @@ CREATE INDEX idx_pay_order                 ON payment (order_id);
 CREATE INDEX idx_pay_type                  ON payment (payment_type);
 CREATE INDEX idx_rev_score                 ON review  (review_score);
 CREATE INDEX idx_prod_category             ON product (category_name);
+
+-- Indices avanzados (tipos especializados)
+CREATE INDEX IF NOT EXISTS idx_product_specifications ON product USING GIN (specifications);
+CREATE INDEX IF NOT EXISTS idx_product_photo_urls     ON product USING GIN (photo_urls);
+CREATE INDEX IF NOT EXISTS idx_order_promotion_period ON "order" USING GIST (promotion_period);
+
+-- =============================================
+-- VISTAS GEOGRÃƒÆ’ï¿½FICAS (tipo POINT para operador <->)
+-- =============================================
+
+CREATE OR REPLACE VIEW customer_geo AS
+SELECT
+    c.customer_id,
+    c.customer_unique_id,
+    c.zip_code_prefix,
+    c.customer_city,
+    c.customer_state,
+    POINT(g.longitude, g.latitude) AS location
+FROM customer c
+LEFT JOIN geolocation g ON g.zip_code_prefix = c.zip_code_prefix;
+
+CREATE OR REPLACE VIEW seller_geo AS
+SELECT
+    s.seller_id,
+    s.zip_code_prefix,
+    s.seller_city,
+    s.seller_state,
+    POINT(g.longitude, g.latitude) AS location
+FROM seller s
+LEFT JOIN geolocation g ON g.zip_code_prefix = s.zip_code_prefix;

@@ -29,6 +29,7 @@
   },
   "indexes": [
     { "key": { "customer_unique_id": 1 }, "description": "Buscar sesión activa por usuario" },
-    { "key": { "expires_at": 1 }, "options": { "expireAfterSeconds": 0 }, "description": "TTL: expiración automática a las 24h" }
+    { "key": { "expires_at": 1 }, "options": { "expireAfterSeconds": 0 }, "description": "TTL: expiración automática a las 24h" },
+    { "key": { "customer_unique_id": 1, "created_at": -1 }, "name": "idx_esr_customer_created", "description": "ESR: E=customer_unique_id (equality filter by customer), S=created_at -1 (sort by most recent session first). No range component needed for this query pattern. Query: find active sessions for a customer, newest first." }
   ]
 }

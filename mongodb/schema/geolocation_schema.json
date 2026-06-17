@@ -1,0 +1,22 @@
+{
+  "collection": "geolocation",
+  "engine": "MongoDB",
+  "description": "Geolocalización de códigos postales brasileños. Datos del Olist dataset. Usada para análisis geográfico de clientes y vendedores.",
+  "schema_validation": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": ["geolocation_zip_code_prefix", "geolocation_lat", "geolocation_lng", "geolocation_city", "geolocation_state"],
+      "properties": {
+        "geolocation_zip_code_prefix": { "bsonType": "string", "description": "Prefijo del código postal (CEP). 5 dígitos." },
+        "geolocation_lat": { "bsonType": "double", "description": "Latitud en grados decimales." },
+        "geolocation_lng": { "bsonType": "double", "description": "Longitud en grados decimales." },
+        "geolocation_city": { "bsonType": "string", "description": "Nombre de la ciudad." },
+        "geolocation_state": { "bsonType": "string", "description": "Código del estado brasileño (2 letras, ej: SP, RJ, MG)." }
+      }
+    }
+  },
+  "indexes": [
+    { "key": { "geolocation_state": 1, "geolocation_city": 1 }, "description": "Índice compuesto: filtrar por estado + ciudad" },
+    { "key": { "geolocation_zip_code_prefix": 1 }, "unique": false, "description": "Búsqueda por código postal" }
+  ]
+}

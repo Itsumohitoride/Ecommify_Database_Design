@@ -1,0 +1,179 @@
+{
+    "collection": "products_catalog",
+    "engine": "MongoDB",
+    "description": "Catálogo enriquecido de productos con especificaciones variables por categoría. Esquema flexible.",
+    "schema_validation": {
+        "$jsonSchema": {
+            "bsonType": "object",
+            "required": [
+                "product_id",
+                "product_category_name",
+                "name",
+                "created_at",
+                "updated_at"
+            ],
+            "properties": {
+                "product_id": {
+                    "bsonType": "string",
+                    "description": "Hash MD5, FK a PostgreSQL product.product_id"
+                },
+                "product_category_name": {
+                    "bsonType": "string",
+                    "description": "Categoría en portugués"
+                },
+                "category_name_english": {
+                    "bsonType": "string",
+                    "description": "Traducción al inglés"
+                },
+                "name": {
+                    "bsonType": "string",
+                    "description": "Nombre del producto (anonimizado por Olist)"
+                },
+                "product_name_lenght": {
+                    "bsonType": "int",
+                    "minimum": 0,
+                    "description": "Longitud del nombre del producto en caracteres (CSV Olist)"
+                },
+                "product_description_lenght": {
+                    "bsonType": "int",
+                    "minimum": 0,
+                    "description": "Longitud de la descripción del producto en caracteres (CSV Olist)"
+                },
+                "product_photos_qty": {
+                    "bsonType": "int",
+                    "minimum": 0,
+                    "description": "Cantidad de fotos del producto (CSV Olist)"
+                },
+                "product_weight_g": {
+                    "bsonType": "int",
+                    "minimum": 0,
+                    "description": "Peso del producto en gramos (CSV Olist)"
+                },
+                "product_length_cm": {
+                    "bsonType": "int",
+                    "minimum": 0,
+                    "description": "Largo del producto en cm (CSV Olist)"
+                },
+                "product_height_cm": {
+                    "bsonType": "int",
+                    "minimum": 0,
+                    "description": "Altura del producto en cm (CSV Olist)"
+                },
+                "product_width_cm": {
+                    "bsonType": "int",
+                    "minimum": 0,
+                    "description": "Ancho del producto en cm (CSV Olist)"
+                },
+                "description": {
+                    "bsonType": "string"
+                },
+                "photo_urls": {
+                    "bsonType": "array",
+                    "items": {
+                        "bsonType": "string"
+                    },
+                    "description": "URLs del CDN"
+                },
+                "specifications": {
+                    "bsonType": "object",
+                    "description": "Atributos variables por categoría. Sin estructura fija."
+                },
+                "tags": {
+                    "bsonType": "array",
+                    "items": {
+                        "bsonType": "string"
+                    }
+                },
+                "avg_review_score": {
+                    "bsonType": "double",
+                    "minimum": 0,
+                    "maximum": 5
+                },
+                "total_reviews": {
+                    "bsonType": "int",
+                    "minimum": 0
+                },
+                "schema_version": {
+                    "bsonType": "int",
+                    "description": "Versionado de esquema para migraciones graduales"
+                },
+                "created_at": {
+                    "bsonType": "date"
+                },
+                "updated_at": {
+                    "bsonType": "date"
+                }
+            }
+        }
+    },
+    "indexes": [
+        {
+            "key": {
+                "product_id": 1
+            },
+            "unique": true,
+            "description": "Clave de sincronización con PostgreSQL"
+        },
+        {
+            "key": {
+                "product_category_name": 1
+            },
+            "description": "Filtro por categoría"
+        },
+        {
+            "key": {
+                "tags": 1
+            },
+            "description": "Búsqueda por tags"
+        },
+        {
+            "key": {
+                "avg_review_score": -1
+            },
+            "description": "Ordenar por calificación"
+        },
+        {
+            "key": {
+                "created_at": -1
+            },
+            "description": "Productos recientes"
+        },
+        {
+            "key": {
+                "product_category_name": 1,
+                "avg_review_score": -1,
+                "product_id": 1
+            },
+            "name": "idx_esr_category_score_id",
+            "description": "ESR: E=product_category_name (equality filter by category), S=avg_review_score -1 (sort by rating descending), R=product_id (covering index, no additional scan). Query: find top products by category."
+        },
+        {
+            "key": {
+                "avg_review_score": -1,
+                "product_category_name": 1
+            },
+            "name": "idx_partial_high_rated",
+            "options": {
+                "partialFilterExpression": {
+                    "avg_review_score": {
+                        "$gte": 4.0
+                    }
+                }
+            },
+            "description": "Partial: only indexes products with avg_review_score >= 4.0. Serves queries for top-rated products. Smaller index = less maintenance, faster scans."
+        },
+        {
+            "name": "idx_text_category_compound",
+            "key": {
+                "product_category_name": 1,
+                "name": "text",
+                "description": "text",
+                "tags": "text"
+            },
+            "options": {
+                "default_language": "none"
+            },
+            "description": "Compound: product_category_name (regular field for equality filter) + full-text on name+description+tags. Optimized for: db.products_catalog.find({product_category_name: 'eletronicos', $text: {$search: 'bluetooth'}})"
+        }
+    ]
+}

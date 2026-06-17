@@ -1,4 +1,4 @@
-{
+﻿{
   "collection": "event_logs",
   "engine": "MongoDB",
   "description": "Logs de eventos operacionales (vistas, clics, búsquedas, carritos abandonados). TTL 90 días.",
@@ -29,6 +29,9 @@
     { "key": { "product_id": 1, "timestamp": -1 }, "description": "Eventos por producto" },
     { "key": { "session_id": 1 }, "description": "Reconstruir sesión completa" },
     { "key": { "category": 1, "timestamp": -1 } },
-    { "key": { "ttl_expire": 1 }, "options": { "expireAfterSeconds": 0 }, "description": "TTL: borrado automático a los 90 días" }
+    { "key": { "ttl_expire": 1 }, "options": { "expireAfterSeconds": 0 }, "description": "TTL: borrado automático a los 90 días" },
+    { "key": { "event_type": 1, "timestamp": -1, "session_id": 1 }, "name": "idx_esr_type_time_session", "description": "ESR: E=event_type (equality filter by event type), S=timestamp -1 (sort by most recent first), R=session_id (equality scan for session-based grouping). Query: find recent events of type X grouped by session." },
+    { "key": { "customer_unique_id": 1, "timestamp": -1 }, "name": "idx_partial_product_view", "options": { "partialFilterExpression": { "event_type": "product_view" } }, "description": "Partial: only indexes product_view events. Serves analytics queries: 'product views by customer over time'. Drastically reduces index size vs full event_logs index." }
   ]
 }
+
